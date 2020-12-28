@@ -9,18 +9,28 @@ import lxml
 import time
 import re
 import multiprocessing as mp
-# Intro
-# Ce Script de Scraping nous permet de récuperer certaines données de Categories et Livres a partir d'une URL correspondant a une librairie en ligne 
-# En utilisant les modules Requests et BeautyfulSoup(bs4) on va recuperer le contenu html d'une url(page) et ecrire les données dans un fichier csv
-# Une fois les données récuperer on les ecrit dans un fichier CSV correspondant au nom de la categorie du livre
+'''
+Intro
 
-# Cette fonction nous permet de recuperer les données d'un livre a partir d'une URL de page produit donner.
-# Elle nous permet aussi d'ecrire les données recuperer dans le fichier CSV correspondant a la category du produit recuperer.
+Ce Script de Scraping nous permet de récuperer certaines données de Livres a partir d'une URL correspondant a une librairie en ligne et de trier les livres par categories.
+En utilisant les modules Requests et BeautyfulSoup(bs4) on va recuperer le contenu html d'une url(page) et ecrire les données dans un fichier csv
+Une fois les données récuperer on les ecrit dans un fichier CSV correspondant au nom de la categorie du livre
+
+'''
+
+
 def gen_product_data(product_url):
-    # Extraction from given Product Page URL
+    '''
+    Cette fonction nous permet de recuperer les données d'un livre a partir d'une URL de page produit donner.
+    Elle nous permet aussi d'ecrire les données recuperer dans le fichier CSV correspondant a la category du produit recuperer.
+    On recupere aussi l'image de couverture du livre et l'inscrivont dans un dossier correspondant a la category du livre.
 
+    '''
+    # Extraction from given Product Page URL
+    # Utilisation du module request nous permet de recuperer le contenu d'une url donner
     source = requests.get(product_url)
     if source.ok:
+        # Utilisation du module BeautifulSoup nous permet de parcourir le contenu html d'une url sous forme de texte et de parcourir ses balises.
         soup = BeautifulSoup(source.text, "lxml")
 
         # Fecthes the Category from the aside linkbar
@@ -139,7 +149,9 @@ def gen_product_data(product_url):
 
 
 
-
+'''
+Cette Fonction nous permet de recuperer toutes les URL de chaques categorie ainsi que toutes les pages de chaques categories
+'''
 def gen_categories():
 
     # FETCHES THE CATEGORIES' URLS AND WRITES THEM INTO A LIST
@@ -216,6 +228,16 @@ def gen_categories():
     print(ctg_pages)
     return (ctg_pages, category_names)
 
+
+'''
+Cette fonction nous permet de :
+- boucler a travers chaque page de chaque category
+- Creer des dossiers et fichier csv correspondant a chaque category_title (nom de category)
+- recuperer toutes les page produit de chaque category
+- boucle avec le module multiprocessing sur chaque url page produit recupere pour chaque page de chaque category
+- et passer en argument pour chaque url la fonction gen_products_data
+'''
+
 def gen_products():
     start = time.time()
     dir = f"Categories"
@@ -224,16 +246,22 @@ def gen_products():
     (ctg_pages, ctg_names) = gen_categories()
     # FECTHES EACH URL FROM EACH CATEGORY_PAGES
     
+    # Pour chaque url trouver dans la liste des pages categories
+   
     for url in ctg_pages:
         # print(url)
         ctg_name = []
+         # on recupere le nom de la categorie si il correspond a l'url actuel dans la boucle for
         for name in ctg_names:
             if name in url:
+                # et on l'ajoute a une liste ctg_name
                 ctg_name.append(name)
             else:
                 pass
-        # print(ctg_name)
-        # FECTHES THE CATEGORY NAMES
+
+        #Ici on recupere le nom de la categorie (category_title) et le numero de la page de cette category (i)
+
+        #On recupere deja le numero de la page dans l'url (i)
         i = (
             url.replace("http://books.toscrape.com/catalogue/category/", "")
             .replace("/index.html", "")
@@ -242,28 +270,36 @@ def gen_products():
             .replace(".html", "")
             .replace(f"{ctg_name[0]}", "")
         )
-        # print(i)
+        # ici on recupere que le nom de la category (category_title) 'travel_2'
         category_title = (
             url.replace("http://books.toscrape.com/catalogue/category/", "")
             .replace("/index.html", "")
             .replace("books/", "")
             .replace(f"/page-{i}.html", "")
         )
+        # et ici on embellie le titre de la category de l'url, travel_2 = Travel
         category_title = category_title[:-2].replace("_", "").capitalize().replace('-', ' ').title()
+        
         print(f"CATEGORY NAME : {category_title}\n PAGE_NUMBER : {i}")
         # CREATE CATEGORY FOLDER
+
+        # Maintenant le nom de la category recuperer et identifier
+        # nous pouvons creer un repetoire correspondant a la category de l'url actuel 
+        # (si il n'existe pas deja)
         dir = f"Categories/{category_title}"
         if not os.path.exists(dir):
             os.mkdir(f"Categories/{category_title}")
-        # if non existent create category.csv file:
-        filename = f"Categories/{category_title}/{category_title}.csv"
 
+
+        # Ici nous creeons un fichier csv correspondat a la category recuperer (si il na pas deja ete cree):
+        filename = f"Categories/{category_title}/{category_title}.csv"
         if not os.path.exists(filename):
             with open(
                 f"Categories/{category_title}/{category_title}.csv",
                 "w",
                 encoding="utf-16",
             ) as csvfile:
+                # Ici nous precisons les noms de colonnes a creer pour le fichier csv
                 fieldnames = [
                     "CATEGORY",
                     "PRODUCT URL",
@@ -276,12 +312,14 @@ def gen_products():
                     "REVIEW RATING",
                     "IMAGE_URL",
                 ]
+                # We use the csv Dictwriter writer to write the columns inside the {category_title}.csv file from a given dictionary
                 writer = csv.DictWriter(csvfile, fieldnames)
+                # writeheader = Write a row with the field names (as specified in the constructor).
                 writer.writeheader()
 
         # Fetches each product url from each category page and 
-        # appends product data from each product url into csvfile named after its category
-
+        # Appends product data from each product url into csvfile named after its category
+        # Ici on recupere toutes les pages produit de chaque url en navigaunt a traver le html de l'url de page category recuperer
         source = requests.get(url)
         soup = BeautifulSoup(source.text, "lxml")
         links = soup.findAll("div", {"class": "image_container"})
@@ -295,18 +333,29 @@ def gen_products():
                 .replace("'", "")
                 .replace(",", "\n\n")
                 .replace("../../", "")
-            )
+            )       
+            # Une fois chaque url produit extrait de l'url category (page category) actuel
+            # On append chaque url produit a une liste 'product_urls'
             product_urls.append(base_url + link)
+
+        # en utilisant le module multiprocessing on demande a notre cpu d'effectuer la fonction gen_product_data en paralel (en meme temp) 
+        # cela depend du nombre de coeur du cpu actuel mais il peux ameliorer jusqu'a 10 fois la vitesse de scraping.
+        # pour chaque url de livre trouver dans la page d'url de la categoryu actuel 
         pool = mp.Pool()
         pool.map(gen_product_data, [url for url in product_urls])
         pool.close()
+
+    # Une fois chaque url category parcouru et chaque url produit scraped et ecrit dans leur fichier {category_title}.csv respectif
+    # on zip l'arboresence du dossier Categories dans un fichier zip apperler Categories.zip
 
     folder_to_zip = "Categories"
     with zipfile.ZipFile("Categories.zip", "w", zipfile.ZIP_DEFLATED) as newzip:
         for dirpath, dirnames, files in os.walk(folder_to_zip):
             for file in files:
                 newzip.write(os.path.join(dirpath, file))
+    # ensuite on supprime l'arboresence du dossier Categories pour ne garder que le fichier Categories.zip
     shutil.rmtree("Categories")
+    # nous permet de savoir combien de minutes a pris le programmes pour s'executer.
     end = time.time()
     timing = end - start
     timing = timing / 60
