@@ -15,7 +15,6 @@ Then in your project's folder install the *BeautifulSoup4*, *lxml*, *requests* a
  pip install os
  pip install zipfile
  pip install shutil
- pip install cchard
  pip install lxml
  pip install time
  pip install multiprocessing
